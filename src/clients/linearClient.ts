@@ -81,6 +81,7 @@ export async function returnIssueInfo(request: Request) {
     id: body.data.id,
     title: body.data.title,
     priorityLabel: body.data.priorityLabel,
+    priority: body.data.priority,
     assigneeId: body.data.assigneeId,
     dueDate: body.data.dueDate,
     state: {
@@ -96,6 +97,7 @@ export interface IssueInfo {
   id: string;
   title: string;
   priorityLabel?: string;
+  priority?: number;
   assigneeId?: string;
   dueDate: DateYMDString | null;
   state: IssueInfoState;

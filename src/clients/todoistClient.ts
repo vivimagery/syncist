@@ -2,7 +2,7 @@ import config from "../../config";
 import { Task } from "../types/database";
 import { DateYMDString } from "../types/dates";
 
-const urlBase = "https://api.todoist.com/rest/v1";
+const urlBase = "https://api.todoist.com/rest/v2";
 const headers = {
   // @ts-ignore
   Authorization: `Bearer ${TODOIST_API_KEY}`,
@@ -25,11 +25,12 @@ export async function returnTaskInfo(request: Request) {
   return info;
 }
 
-export async function addTask(taskName: string, dueDate?: Due["date"]) {
+export async function addTask(taskName: string, dueDate?: Due["date"], priority?: TaskInfo["priority"]) {
   const task = {
     content: taskName,
     project_id: config.todoistProject,
     due_date: dueDate || null,
+    priority: mapPriority(priority),
   };
 
   const response = await fetch(`${urlBase}/tasks`, {
@@ -54,12 +55,19 @@ export async function completeTask(taskId: Task["todoist_task_id"]) {
 
 export async function updateTask(
   taskId: Task["todoist_task_id"],
-  taskInfo: { content?: TaskInfo["content"]; due_date?: Due["date"] }
+  taskInfo: { content?: TaskInfo["content"]; due_date?: Due["date"]; priority?: TaskInfo["priority"]}
 ) {
+  const mappedTaskInfo = {
+    ...taskInfo,
+    // Only map the priority if it exists
+    ...(taskInfo.priority !== undefined && { 
+      priority: mapPriority(taskInfo.priority) 
+    })
+  };
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
     headers,
     method: "POST",
-    body: JSON.stringify(taskInfo),
+    body: JSON.stringify(mappedTaskInfo),
   });
 
   const body = await response.body;
@@ -89,4 +97,26 @@ interface Due {
   recurring: boolean;
   string: string;
   timezone?: string;
+}
+
+/**
+ * Linear -> Todoist:
+ * - 0 → 1 (lowest priority)
+ * - 4 → 2
+ * - 3 → 3
+ * - 2 → 4
+ * - 1 → 4 (highest priority)
+ */
+export function mapPriority(originalPriority: number | null | undefined): number | null {
+  if (originalPriority === null || originalPriority === undefined) return null;
+  
+  const priorityMap: Record<number, number> = {
+    0: 1,
+    4: 2,
+    3: 3,
+    2: 4,
+    1: 4
+  };
+  
+  return priorityMap[originalPriority] || originalPriority;
 }
