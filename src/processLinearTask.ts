@@ -95,8 +95,8 @@ export async function processLinearTask(issue: Request, db: any) {
 
         if (delTask) {
           await deleteTask(delTask.todoist_task_id).catch((err) => {
-            console.log(`Unable to delete task in Todoist: ${err}`);
-            throw new Error(`Unable to delete task in Todoist: ${err}`);
+            console.error(`Unable to delete task in Todoist: ${err}`);
+            throw err;
           });
 
           const { data, error } = await db

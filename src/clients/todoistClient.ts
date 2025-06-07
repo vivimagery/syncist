@@ -81,7 +81,8 @@ export async function deleteTask(taskId: Task["todoist_task_id"]) {
   });
 
   if (!response.ok) {
-    throw new Error(`Todoist deleteTask failed: ${response.statusText}`);
+    const responseBody = await response.text();
+    throw new Error(`Todoist deleteTask failed: ${response.status} ${response.statusText}. Response body: ${responseBody}`);
   }
 
   return response.ok;
