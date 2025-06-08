@@ -74,6 +74,25 @@ export async function addCommentToIssue(
   return success;
 }
 
+export async function deleteIssue(issueId: IssueInfo["id"]) {
+  const body = JSON.stringify({
+    query: `
+      mutation IssueDelete($id: String!) {
+        issueDelete(id: $id) {
+          success
+        }
+      }
+    `,
+    variables: {
+      id: issueId,
+    },
+  });
+
+  const response: any = await client(body);
+  const success = response?.data?.issueDelete?.success;
+  return success;
+}
+
 export async function returnIssueInfo(request: Request) {
   const body: any = await request.json();
   const info: IssueInfo = {
