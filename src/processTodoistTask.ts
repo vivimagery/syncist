@@ -1,5 +1,5 @@
 import { getTaskFromDb } from "./clients/dbClient";
-import { addCommentToIssue, markIssueComplete } from "./clients/linearClient";
+import { addCommentToIssue, markIssueComplete, reopenIssue } from "./clients/linearClient";
 import { returnTaskInfo, TaskInfo } from "./clients/todoistClient";
 import { Task, Team } from "./types/database";
 
@@ -83,6 +83,40 @@ export async function processTodoistTask(issue: Request, db: any) {
             task: data["0"],
             success: true,
             message: "Task completion status synced",
+          };
+        }
+      }
+      break;
+    }
+    case "item:uncompleted": {
+      console.log("uncompleting task");
+      // If task uncompleted in Todoist, check if task is tracked
+      const task = await getTaskFromDb("todoist", info.taskId, db);
+
+      console.log("task", task);
+
+      // If completed, reopen in Linear
+      if (team?.linear_initial_state_id && task && task.completed) {
+        const reopened = await reopenIssue(
+          task.linear_task_id,
+          team.linear_initial_state_id
+        );
+
+        if (reopened) {
+          const { data, error } = await db
+            .from("task")
+            .update({ completed: false, active: true })
+            .match({ id: task.id });
+
+          if (error) {
+            console.log(error);
+            throw new Error(error);
+          }
+
+          return {
+            task: data["0"],
+            success: true,
+            message: "Task uncompleted status synced",
           };
         }
       }

@@ -51,6 +51,29 @@ export async function markIssueComplete(
   return success;
 }
 
+export async function reopenIssue(
+  issueId: IssueInfo["id"],
+  initialStateId: Team["linear_initial_state_id"]
+) {
+  const body = JSON.stringify({
+    query: `
+      mutation IssueUpdate($id: String!, $stateId: String!) {
+        issueUpdate(id: $id, input: { stateId: $stateId }) {
+          success
+        }
+      }
+    `,
+    variables: {
+      id: issueId,
+      stateId: initialStateId,
+    },
+  });
+
+  const response: any = await client(body);
+  const success = response?.data?.issueUpdate?.success;
+  return success;
+}
+
 export async function addCommentToIssue(
   issueId: IssueInfo["id"],
   commentBody: string
