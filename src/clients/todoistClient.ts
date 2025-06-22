@@ -27,7 +27,7 @@ export async function returnTaskInfo(request: Request) {
 export async function addTask(taskName: string, dueDate?: Due["date"], priority?: TaskInfo["priority"]) {
   const task = {
     content: taskName,
-    project_id: TODOIST_PROJECT_ID,
+    project_id: TODOIST_PROJECT,
     due_date: dueDate || null,
     priority: mapPriority(priority),
   };
