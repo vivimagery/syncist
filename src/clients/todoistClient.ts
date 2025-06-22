@@ -1,4 +1,3 @@
-import config from "../../config";
 import { Task } from "../types/database";
 import { DateYMDString } from "../types/dates";
 
@@ -28,7 +27,7 @@ export async function returnTaskInfo(request: Request) {
 export async function addTask(taskName: string, dueDate?: Due["date"], priority?: TaskInfo["priority"]) {
   const task = {
     content: taskName,
-    project_id: config.todoistProject,
+    project_id: TODOIST_PROJECT_ID,
     due_date: dueDate || null,
     priority: mapPriority(priority),
   };
