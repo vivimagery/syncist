@@ -3,7 +3,7 @@ import {
   IssueInfo,
   returnIssueInfo,
 } from "./clients/linearClient";
-import { addTask, completeTask, updateTask } from "./clients/todoistClient";
+import { addTask, completeTask, updateTask, deleteTask } from "./clients/todoistClient";
 import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
@@ -84,6 +84,35 @@ export async function processLinearTask(issue: Request, db: any) {
           return updated;
         }
         break;
+      case "delete":
+      case "removed":
+      case "remove": {
+        const { data: delTask }: { data: Task } = await db
+          .from("task")
+          .select()
+          .eq("linear_task_id", info.id)
+          .maybeSingle();
+
+        if (delTask) {
+          await deleteTask(delTask.todoist_task_id).catch((err) => {
+            console.error(`Unable to delete task in Todoist: ${err}`);
+            throw err;
+          });
+
+          const { data, error } = await db
+            .from("task")
+            .update({ active: false })
+            .match({ linear_task_id: info.id });
+
+          if (error) {
+            console.error("error updating task in database", error);
+            return error;
+          }
+
+          return data[0];
+        }
+        break;
+      }
       default:
         return null;
   }
