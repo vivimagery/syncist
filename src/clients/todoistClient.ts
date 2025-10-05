@@ -110,7 +110,7 @@ export function mapPriority(originalPriority: number | null | undefined): number
   if (originalPriority === null || originalPriority === undefined) return null;
   
   const priorityMap: Record<number, number> = {
-    0: 1,
+    0: 2,
     4: 2,
     3: 3,
     2: 4,
