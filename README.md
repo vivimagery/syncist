@@ -42,3 +42,7 @@ All hosting and functions are being built to run on Cloudflare Workers.
 5. Obtain Linear token and add to secrets
 6. Set up Todoist webhook
 7. Set up Linear webhook
+
+## Testing
+
+This section is for testing purposes.
