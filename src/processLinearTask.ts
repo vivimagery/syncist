@@ -93,35 +93,38 @@ export async function processLinearTask(issue: Request, db: any) {
           .maybeSingle();
 
         if (taskToDelete) {
-          let deleted;
           try {
+            // Delete task from Todoist
             const success = await deleteTask(taskToDelete.todoist_task_id);
-            if (success) {
-              // Remove from database
-              const { data, error } = await db
-                .from("task")
-                .delete()
-                .match({ linear_task_id: info.id });
-
-              if (error) throw new Error(error);
-              deleted = {
-                task: taskToDelete,
-                success: true,
-                message: "Task deleted from Todoist",
-              };
-            } else {
-              throw new Error("Failed to delete task from Todoist");
+            if (!success) {
+              throw new Error(`Failed to delete task from Todoist API (task ID: ${taskToDelete.todoist_task_id})`);
             }
+
+            // Remove from database
+            const { data, error } = await db
+              .from("task")
+              .delete()
+              .match({ linear_task_id: info.id });
+
+            if (error) {
+              throw new Error(`Failed to delete task from database: ${error.message || error}`);
+            }
+
+            const deleted = {
+              task: taskToDelete,
+              success: true,
+              message: "Task deleted from Todoist and database",
+            };
+            console.log(deleted);
+            return deleted;
           } catch (err) {
             console.log("error deleting task", err);
-            deleted = {
+            const deleted = {
               success: false,
-              message: `Unable to delete task: ${err}`,
+              message: `Unable to delete task: ${err instanceof Error ? err.message : err}`,
             };
+            return deleted;
           }
-
-          console.log(deleted);
-          return deleted;
         }
         break;
       default:
