@@ -38,7 +38,7 @@ export async function processLinearTask(issue: Request, db: any) {
         break;
       case "update":
         // Check if task is in Todoist
-        const { data: task }: { data: Task } = await db
+        const { data: task } = await db
           .from("task")
           .select()
           .eq("linear_task_id", info.id)
@@ -86,7 +86,7 @@ export async function processLinearTask(issue: Request, db: any) {
         break;
       case "remove":
         // Check if task exists in Todoist
-        const { data: taskToDelete }: { data: Task } = await db
+        const { data: taskToDelete } = await db
           .from("task")
           .select()
           .eq("linear_task_id", info.id)
