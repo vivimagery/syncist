@@ -104,7 +104,7 @@ export async function processLinearTask(issue: Request, db: any) {
             const { data, error } = await db
               .from("task")
               .delete()
-              .match({ linear_task_id: info.id });
+              .eq("linear_task_id", info.id);
 
             if (error) {
               throw new Error(`Failed to delete task from database: ${error.message || error}`);
@@ -125,6 +125,11 @@ export async function processLinearTask(issue: Request, db: any) {
             };
             return deleted;
           }
+        } else {
+          return {
+            success: false,
+            message: "Task not found in database, nothing to delete",
+          };
         }
         break;
       default:
