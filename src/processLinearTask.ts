@@ -101,7 +101,7 @@ export async function processLinearTask(issue: Request, db: any) {
             }
 
             // Remove from database
-            const { data, error } = await db
+            const { error } = await db
               .from("task")
               .delete()
               .eq("linear_task_id", info.id);
