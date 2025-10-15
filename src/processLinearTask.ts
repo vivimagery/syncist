@@ -115,10 +115,10 @@ export async function processLinearTask(issue: Request, db: any) {
               success: true,
               message: "Task deleted from Todoist and database",
             };
-            console.log(deleted);
+            console.log(`Task deleted successfully: Linear ID ${info.id}, Todoist ID ${taskToDelete.todoist_task_id}`);
             return deleted;
           } catch (err) {
-            console.log("error deleting task", err);
+            console.error(`Error deleting task (Linear ID ${info.id}):`, err);
             const deleted = {
               success: false,
               message: `Unable to delete task: ${err instanceof Error ? err.message : err}`,

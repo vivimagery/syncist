@@ -73,7 +73,12 @@ export async function updateTask(
   return body;
 }
 
-export async function deleteTask(taskId: Task["todoist_task_id"]) {
+/**
+ * Deletes a task from Todoist by its task ID.
+ * @param taskId - The Todoist task ID to delete
+ * @returns Promise resolving to true if successful, false otherwise
+ */
+export async function deleteTask(taskId: Task["todoist_task_id"]): Promise<boolean> {
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
     headers,
     method: "DELETE",
