@@ -59,8 +59,8 @@ export async function updateTask(
   const mappedTaskInfo = {
     ...taskInfo,
     // Only map the priority if it exists
-    ...(taskInfo.priority !== undefined && { 
-      priority: mapPriority(taskInfo.priority) 
+    ...(taskInfo.priority !== undefined && {
+      priority: mapPriority(taskInfo.priority)
     })
   };
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
@@ -71,6 +71,20 @@ export async function updateTask(
 
   const body = await response.body;
   return body;
+}
+
+/**
+ * Deletes a task from Todoist by its task ID.
+ * @param taskId - The Todoist task ID to delete
+ * @returns Promise resolving to true if successful, false otherwise
+ */
+export async function deleteTask(taskId: Task["todoist_task_id"]): Promise<boolean> {
+  const response = await fetch(`${urlBase}/tasks/${taskId}`, {
+    headers,
+    method: "DELETE",
+  });
+
+  return response.ok;
 }
 
 export interface TaskInfo {
