@@ -48,6 +48,9 @@ export async function processTodoistTask(issue: Request, db: any) {
             success: true,
             message: "Task deleted in Linear",
           };
+        } else {
+          console.log("Failed to delete issue in Linear");
+          throw new Error("Failed to delete issue in Linear");
         }
       }
 
