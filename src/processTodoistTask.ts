@@ -40,13 +40,15 @@ export async function processTodoistTask(issue: Request, db: any) {
           throw new Error(error);
         }
 
-        await deleteIssue(task.linear_task_id);
+        const deleted = await deleteIssue(task.linear_task_id);
 
-        return {
-          task: data["0"],
-          success: true,
-          message: "Task deleted in Linear",
-        };
+        if (deleted) {
+          return {
+            task: data["0"],
+            success: true,
+            message: "Task deleted in Linear",
+          };
+        }
       }
 
       return;
