@@ -31,7 +31,7 @@ async function createTaskInTodoistAndDb(
     "This issue is being tracked in Todoist."
   );
 
-  return data?.[0];
+  return data[0];
 }
 
 export async function processLinearTask(issue: Request, db: any) {
