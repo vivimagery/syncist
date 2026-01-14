@@ -15,12 +15,17 @@ export async function processLinearTask(issue: Request, db: any) {
     console.log(info);
 
     // Check if assignee filtering is enabled
-    // @ts-ignore
-    const LINEAR_ASSIGNEE_ID = typeof LINEAR_ASSIGNEE_ID !== 'undefined' ? LINEAR_ASSIGNEE_ID : null;
+    let assigneeFilter = null;
+    try {
+      // @ts-ignore
+      assigneeFilter = LINEAR_ASSIGNEE_ID;
+    } catch (e) {
+      // LINEAR_ASSIGNEE_ID not defined, filtering disabled
+    }
     
     // If filter is active and assignee doesn't match, skip syncing
-    if (LINEAR_ASSIGNEE_ID && info.assigneeId !== LINEAR_ASSIGNEE_ID) {
-      console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${LINEAR_ASSIGNEE_ID}`);
+    if (assigneeFilter && info.assigneeId !== assigneeFilter) {
+      console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${assigneeFilter}`);
       return { success: true, message: "Issue filtered by assignee", skipped: true };
     }
 
