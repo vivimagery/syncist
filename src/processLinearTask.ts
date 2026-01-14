@@ -15,7 +15,7 @@ export async function processLinearTask(issue: Request, db: any) {
     console.log(info);
 
     // Check if assignee filtering is enabled
-    let assigneeFilter = null;
+    let assigneeFilter;
     try {
       // @ts-ignore
       assigneeFilter = LINEAR_ASSIGNEE_ID;
@@ -26,7 +26,7 @@ export async function processLinearTask(issue: Request, db: any) {
     // If filter is active and assignee doesn't match, skip syncing
     if (assigneeFilter && info.assigneeId !== assigneeFilter) {
       console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${assigneeFilter}`);
-      return { success: true, message: "Issue filtered by assignee", skipped: true };
+      return { success: true, message: "Issue filtered by assignee" };
     }
 
     switch (info.action) {
