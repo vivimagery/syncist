@@ -69,19 +69,40 @@ export async function processLinearTask(issue: Request, db: any) {
             console.log(completed);
             return completed;
           }
-        } else {
-          // update task in Todoist
-          const updated = await updateTask(task.todoist_task_id, {
-            content: info.title,
-            due_date: info.dueDate || null,
-            priority: info.priority,
-          }).catch((err) => {
-            console.log(`Unable to update task in Todoist: ${err}`);
-            throw new Error(`Unable to update task in Todoist: ${err}`);
-          });
+        } else if (activeStates.includes(info.state.type)) {
+          // If task is now in active state
+          if (!task) {
+            // Task doesn't exist - create it (handles backlog→active transition)
+            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            const { data, error } = await db
+              .from("task")
+              .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
 
-          console.log(updated);
-          return updated;
+            if (error) {
+              console.error("error adding task to database", error);
+              return error;
+            }
+
+            await addCommentToIssue(
+              info.id,
+              "This issue is being tracked in Todoist."
+            );
+
+            return data[0];
+          } else {
+            // Task exists - update it
+            const updated = await updateTask(task.todoist_task_id, {
+              content: info.title,
+              due_date: info.dueDate || null,
+              priority: info.priority,
+            }).catch((err) => {
+              console.log(`Unable to update task in Todoist: ${err}`);
+              throw new Error(`Unable to update task in Todoist: ${err}`);
+            });
+
+            console.log(updated);
+            return updated;
+          }
         }
         break;
       default:
