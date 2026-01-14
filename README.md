@@ -42,3 +42,16 @@ All hosting and functions are being built to run on Cloudflare Workers.
 5. Obtain Linear token and add to secrets
 6. Set up Todoist webhook
 7. Set up Linear webhook
+
+## Configuration
+
+### Environment Variables
+
+- `LINEAR_API_KEY` (required): Linear API token for authentication
+- `SUPABASE_URL` (required): Supabase instance URL
+- `SUPABASE_PUBLIC_KEY` (required): Supabase public API key
+- `LINEAR_ASSIGNEE_ID` (optional): Filter syncing to only issues assigned to a specific user
+  - Format: Linear user ID (e.g., "user_abc123xyz")
+  - If set: Only issues assigned to this user will be synced to Todoist
+  - If not set: All issues will be synced (default behavior)
+  - Unassigned issues will not be synced when this filter is active

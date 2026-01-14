@@ -14,6 +14,16 @@ export async function processLinearTask(issue: Request, db: any) {
     const info: IssueInfo = await returnIssueInfo(issue);
     console.log(info);
 
+    // Check if assignee filtering is enabled
+    // @ts-ignore
+    const LINEAR_ASSIGNEE_ID = typeof LINEAR_ASSIGNEE_ID !== 'undefined' ? LINEAR_ASSIGNEE_ID : null;
+    
+    // If filter is active and assignee doesn't match, skip syncing
+    if (LINEAR_ASSIGNEE_ID && info.assigneeId !== LINEAR_ASSIGNEE_ID) {
+      console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${LINEAR_ASSIGNEE_ID}`);
+      return { success: true, message: "Issue filtered by assignee", skipped: true };
+    }
+
     switch (info.action) {
       case "create":
         // Only add a task if issue is in progress or queue up. Ignore backlog and completion states.
