@@ -9,6 +9,31 @@ import { Task } from "./types/database";
 const activeStates = ["unstarted", "started"];
 const completeStates = ["completed"];
 
+/**
+ * Helper function to create a new Todoist task and database entry for a Linear issue
+ */
+async function createTaskInTodoistAndDb(
+  info: IssueInfo,
+  db: any
+) {
+  const task: any = await addTask(info.title, info.dueDate, info.priority);
+  const { data, error } = await db
+    .from("task")
+    .insert({ todoist_task_id: task.id, linear_task_id: info.id });
+
+  if (error) {
+    console.error("error adding task to database", error);
+    return error;
+  }
+
+  await addCommentToIssue(
+    info.id,
+    "This issue is being tracked in Todoist."
+  );
+
+  return data?.[0];
+}
+
 export async function processLinearTask(issue: Request, db: any) {
   console.log("processLinearTask");
     const info: IssueInfo = await returnIssueInfo(issue);
@@ -18,22 +43,7 @@ export async function processLinearTask(issue: Request, db: any) {
       case "create":
         // Only add a task if issue is in progress or queue up. Ignore backlog and completion states.
         if (activeStates.includes(info.state.type)) {
-          const task: any = await addTask(info.title, info.dueDate, info.priority);
-          const { data, error } = await db
-            .from("task")
-            .insert({ todoist_task_id: task.id, linear_task_id: info.id });
-
-          if (error) {
-            console.error("error adding task to database", error);
-            return error;
-          }
-
-          await addCommentToIssue(
-            info.id,
-            "This issue is being tracked in Todoist."
-          );
-
-          return data[0];
+          return await createTaskInTodoistAndDb(info, db);
         }
         break;
       case "update":
@@ -73,22 +83,7 @@ export async function processLinearTask(issue: Request, db: any) {
           // If task is now in active state
           if (!task) {
             // Task doesn't exist - create it (handles backlog→active transition)
-            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
-            const { data, error } = await db
-              .from("task")
-              .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
-
-            if (error) {
-              console.error("error adding task to database", error);
-              return error;
-            }
-
-            await addCommentToIssue(
-              info.id,
-              "This issue is being tracked in Todoist."
-            );
-
-            return data[0];
+            return await createTaskInTodoistAndDb(info, db);
           } else {
             // Task exists - update it
             const updated = await updateTask(task.todoist_task_id, {
