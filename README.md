@@ -55,3 +55,6 @@ All hosting and functions are being built to run on Cloudflare Workers.
   - If set: Only issues assigned to this user will be synced to Todoist
   - If not set: All issues will be synced (default behavior)
   - Unassigned issues will not be synced when this filter is active
+  - **Dynamic assignment behavior:**
+    - When an issue is assigned to the filtered user: Automatically creates task in Todoist (if in active state)
+    - When an issue is unassigned from the filtered user: Automatically removes task from Todoist

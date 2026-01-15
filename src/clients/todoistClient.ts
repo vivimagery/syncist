@@ -73,6 +73,15 @@ export async function updateTask(
   return body;
 }
 
+export async function deleteTask(taskId: Task["todoist_task_id"]) {
+  const response = await fetch(`${urlBase}/tasks/${taskId}`, {
+    headers,
+    method: "DELETE",
+  });
+
+  return response.status === 204;
+}
+
 export interface TaskInfo {
   eventName:
     | "item:added"

@@ -3,7 +3,7 @@ import {
   IssueInfo,
   returnIssueInfo,
 } from "./clients/linearClient";
-import { addTask, completeTask, updateTask } from "./clients/todoistClient";
+import { addTask, completeTask, updateTask, deleteTask } from "./clients/todoistClient";
 import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
@@ -22,15 +22,15 @@ export async function processLinearTask(issue: Request, db: any) {
     } catch (e) {
       // LINEAR_ASSIGNEE_ID not defined, filtering disabled
     }
-    
-    // If filter is active and assignee doesn't match, skip syncing
-    if (assigneeFilter && info.assigneeId !== assigneeFilter) {
-      console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${assigneeFilter}`);
-      return { success: true, message: "Issue filtered by assignee" };
-    }
 
     switch (info.action) {
       case "create":
+        // If filter is active and assignee doesn't match, skip syncing
+        if (assigneeFilter && info.assigneeId !== assigneeFilter) {
+          console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${assigneeFilter}`);
+          return { success: true, message: "Issue filtered by assignee" };
+        }
+        
         // Only add a task if issue is in progress or queue up. Ignore backlog and completion states.
         if (activeStates.includes(info.state.type)) {
           const task: any = await addTask(info.title, info.dueDate, info.priority);
@@ -59,6 +59,64 @@ export async function processLinearTask(issue: Request, db: any) {
           .eq("linear_task_id", info.id)
           .maybeSingle();
 
+        // Handle assignee filtering for updates
+        if (assigneeFilter) {
+          const assigneeMatches = info.assigneeId === assigneeFilter;
+          
+          // If assignee now matches but task doesn't exist, create it (newly assigned to filtered user)
+          if (assigneeMatches && !task && activeStates.includes(info.state.type)) {
+            console.log(`Creating task for issue ${info.id} - newly assigned to filtered user`);
+            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            const { data, error } = await db
+              .from("task")
+              .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
+
+            if (error) {
+              console.error("error adding task to database", error);
+              return error;
+            }
+
+            await addCommentToIssue(
+              info.id,
+              "This issue is being tracked in Todoist."
+            );
+
+            return data[0];
+          }
+          
+          // If assignee doesn't match but task exists, delete it (unassigned from filtered user)
+          if (!assigneeMatches && task && task.active) {
+            console.log(`Deleting task for issue ${info.id} - unassigned from filtered user`);
+            await deleteTask(task.todoist_task_id);
+            
+            const { data, error } = await db
+              .from("task")
+              .update({ active: false })
+              .match({ linear_task_id: info.id });
+
+            if (error) {
+              console.error("error updating task in database", error);
+              return error;
+            }
+
+            await addCommentToIssue(
+              info.id,
+              "Issue unassigned. Removed from Todoist."
+            );
+
+            return {
+              success: true,
+              message: "Task removed from Todoist due to assignee change"
+            };
+          }
+          
+          // If assignee doesn't match and no task exists, skip
+          if (!assigneeMatches && !task) {
+            console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${assigneeFilter}`);
+            return { success: true, message: "Issue filtered by assignee" };
+          }
+        }
+
         // If task completed in Linear
         if (completeStates.includes(info.state.type)) {
           // If not completed, mark completed in Todoist
@@ -86,17 +144,19 @@ export async function processLinearTask(issue: Request, db: any) {
           }
         } else {
           // update task in Todoist
-          const updated = await updateTask(task.todoist_task_id, {
-            content: info.title,
-            due_date: info.dueDate || null,
-            priority: info.priority,
-          }).catch((err) => {
-            console.log(`Unable to update task in Todoist: ${err}`);
-            throw new Error(`Unable to update task in Todoist: ${err}`);
-          });
+          if (task) {
+            const updated = await updateTask(task.todoist_task_id, {
+              content: info.title,
+              due_date: info.dueDate || null,
+              priority: info.priority,
+            }).catch((err) => {
+              console.log(`Unable to update task in Todoist: ${err}`);
+              throw new Error(`Unable to update task in Todoist: ${err}`);
+            });
 
-          console.log(updated);
-          return updated;
+            console.log(updated);
+            return updated;
+          }
         }
         break;
       default:
