@@ -105,7 +105,7 @@ export async function processLinearTask(issue: Request, db: any) {
                 "This issue is being tracked in Todoist."
               );
 
-              return data[0];
+              return { task: data[0] };
             } else {
               // Task doesn't exist, create new record
               const { data, error } = await db
@@ -122,16 +122,16 @@ export async function processLinearTask(issue: Request, db: any) {
                 "This issue is being tracked in Todoist."
               );
 
-              return data[0];
+              return { task: data[0] };
             }
           }
         } else {
           // Issue is in backlog state
           if (task && task.active) {
             // Task exists and is active - delete it (active → backlog transition)
-            const deleted = await deleteTask(task.todoist_task_id);
+            const deleteSuccessful = await deleteTask(task.todoist_task_id);
             
-            if (deleted) {
+            if (deleteSuccessful) {
               const { data, error } = await db
                 .from("task")
                 .update({ active: false })
