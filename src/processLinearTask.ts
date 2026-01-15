@@ -115,8 +115,27 @@ export async function processLinearTask(issue: Request, db: any) {
           if (!task) {
             // Task doesn't exist - create it (handles backlog→active transition)
             return await createTaskInTodoistAndDb(info, db);
+          } else if (!task.active) {
+            // Task exists but is inactive (was deleted from Todoist) - recreate it
+            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            const { data, error } = await db
+              .from("task")
+              .update({ todoist_task_id: newTask.id, active: true })
+              .match({ linear_task_id: info.id });
+
+            if (error) {
+              console.error("error updating task in database", error);
+              return error;
+            }
+
+            await addCommentToIssue(
+              info.id,
+              "This issue is being tracked in Todoist."
+            );
+
+            return data[0];
           } else {
-            // Task exists - update it
+            // Task exists and is active - update it
             const updated = await updateTask(task.todoist_task_id, {
               content: info.title,
               due_date: info.dueDate || null,
