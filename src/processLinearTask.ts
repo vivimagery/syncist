@@ -18,10 +18,13 @@ export async function processLinearTask(issue: Request, db: any) {
     let assigneeFilter;
     try {
       // @ts-ignore
-      assigneeFilter = LINEAR_ASSIGNEE_ID;
+      assigneeFilter = typeof LINEAR_ASSIGNEE_ID !== 'undefined' ? LINEAR_ASSIGNEE_ID : undefined;
     } catch (e) {
       // LINEAR_ASSIGNEE_ID not defined, filtering disabled
+      assigneeFilter = undefined;
     }
+    
+    console.log(`Assignee filter: ${assigneeFilter}, Issue assignee: ${info.assigneeId}`);
 
     switch (info.action) {
       case "create":
