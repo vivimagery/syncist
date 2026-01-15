@@ -19,14 +19,27 @@ export async function processLinearTask(issue: Request, db: any) {
       case "create":
         // Only add a task if issue is in progress or queue up. Ignore backlog and completion states.
         if (activeStates.includes(info.state.type)) {
-          const task: any = await addTask(info.title, info.dueDate, info.priority);
+          const task = await addTask(info.title, info.dueDate, info.priority);
+          
+          if (!task || !task.id) {
+            console.error("Failed to create task in Todoist");
+            return {
+              success: false,
+              message: "Failed to create task in Todoist",
+            };
+          }
+
           const { data, error } = await db
             .from("task")
             .insert({ todoist_task_id: task.id, linear_task_id: info.id });
 
           if (error) {
             console.error("error adding task to database", error);
-            return error;
+            return {
+              success: false,
+              message: "Failed to add task to database",
+              error,
+            };
           }
 
           await addCommentToIssue(
@@ -34,7 +47,11 @@ export async function processLinearTask(issue: Request, db: any) {
             "This issue is being tracked in Todoist."
           );
 
-          return data[0];
+          return {
+            task: data?.[0],
+            success: true,
+            message: "Task created and synced to Todoist",
+          };
         }
         break;
       case "update":
@@ -111,7 +128,7 @@ export async function processLinearTask(issue: Request, db: any) {
         } else if (activeStates.includes(info.state.type)) {
           // If issue transitioned to active state and no task exists, create one
           if (!task) {
-            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            const newTask = await addTask(info.title, info.dueDate, info.priority);
             
             if (!newTask || !newTask.id) {
               console.error("Failed to create task in Todoist");
@@ -127,7 +144,11 @@ export async function processLinearTask(issue: Request, db: any) {
 
             if (error) {
               console.error("error adding task to database", error);
-              return error;
+              return {
+                success: false,
+                message: "Failed to add task to database",
+                error,
+              };
             }
 
             await addCommentToIssue(
@@ -135,7 +156,11 @@ export async function processLinearTask(issue: Request, db: any) {
               "This issue is being tracked in Todoist."
             );
 
-            return data?.[0] || { success: true, message: "Task created successfully" };
+            return {
+              task: data?.[0],
+              success: true,
+              message: "Task created and synced to Todoist",
+            };
           } else {
             // Task exists, update it in Todoist
             const updated = await updateTask(task.todoist_task_id, {
