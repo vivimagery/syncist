@@ -73,41 +73,54 @@ export async function processLinearTask(issue: Request, db: any) {
         } else if (backlogStates.includes(info.state.type)) {
           // If issue moved to backlog and task exists, delete from Todoist
           if (task) {
-            const deleted = await deleteTask(task.todoist_task_id)
-              .then(async () => {
-                const { data, error } = await db
-                  .from("task")
-                  .delete()
-                  .match({ linear_task_id: info.id });
+            const deleted = await deleteTask(task.todoist_task_id);
+            
+            if (!deleted) {
+              console.error("Failed to delete task from Todoist");
+              return {
+                success: false,
+                message: "Failed to delete task from Todoist",
+              };
+            }
 
-                if (error) throw new Error(error);
+            // If Todoist deletion succeeded, delete from DB
+            const { data, error } = await db
+              .from("task")
+              .delete()
+              .match({ linear_task_id: info.id });
 
-                await addCommentToIssue(
-                  info.id,
-                  "Issue moved to backlog. Task deleted from Todoist."
-                );
+            if (error) {
+              console.error("error deleting task from database", error);
+              return {
+                success: false,
+                message: "Failed to delete task from database",
+                error,
+              };
+            }
 
-                return {
-                  success: true,
-                  message: "Task deleted from Todoist due to backlog state",
-                };
-              })
-              .catch((err) => {
-                console.log("error deleting task from Todoist", err);
-                return {
-                  success: false,
-                  message: "Failed to delete task from Todoist",
-                  error: err,
-                };
-              });
+            await addCommentToIssue(
+              info.id,
+              "Issue moved to backlog. Task deleted from Todoist."
+            );
 
-            console.log(deleted);
-            return deleted;
+            return {
+              success: true,
+              message: "Task deleted from Todoist due to backlog state",
+            };
           }
         } else if (activeStates.includes(info.state.type)) {
           // If issue transitioned to active state and no task exists, create one
           if (!task) {
             const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            
+            if (!newTask || !newTask.id) {
+              console.error("Failed to create task in Todoist");
+              return {
+                success: false,
+                message: "Failed to create task in Todoist",
+              };
+            }
+
             const { data, error } = await db
               .from("task")
               .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
@@ -122,7 +135,7 @@ export async function processLinearTask(issue: Request, db: any) {
               "This issue is being tracked in Todoist."
             );
 
-            return data[0];
+            return data?.[0] || { success: true, message: "Task created successfully" };
           } else {
             // Task exists, update it in Todoist
             const updated = await updateTask(task.todoist_task_id, {
