@@ -69,17 +69,31 @@ export async function processLinearTask(issue: Request, db: any) {
         if (assigneeFilter) {
           const assigneeMatches = info.assigneeId === assigneeFilter;
           
-          // If assignee now matches but task doesn't exist, create it (newly assigned to filtered user)
-          if (assigneeMatches && !task && activeStates.includes(info.state.type)) {
+          // If assignee now matches but task doesn't exist or is inactive, create it (newly assigned to filtered user)
+          if (assigneeMatches && (!task || !task.active) && activeStates.includes(info.state.type)) {
             console.log(`Creating task for issue ${info.id} - newly assigned to filtered user`);
             const newTask: any = await addTask(info.title, info.dueDate, info.priority);
-            const { data, error } = await db
-              .from("task")
-              .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
+            
+            // If task record exists but is inactive, update it; otherwise insert new
+            if (task && !task.active) {
+              const { data, error } = await db
+                .from("task")
+                .update({ todoist_task_id: newTask.id, active: true, completed: false })
+                .match({ linear_task_id: info.id });
 
-            if (error) {
-              console.error("error adding task to database", error);
-              return error;
+              if (error) {
+                console.error("error updating task in database", error);
+                return error;
+              }
+            } else {
+              const { data, error } = await db
+                .from("task")
+                .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
+
+              if (error) {
+                console.error("error adding task to database", error);
+                return error;
+              }
             }
 
             await addCommentToIssue(
@@ -87,7 +101,7 @@ export async function processLinearTask(issue: Request, db: any) {
               "This issue is being tracked in Todoist."
             );
 
-            return data[0];
+            return { success: true, message: "Task created" };
           }
           
           // If assignee doesn't match but task exists, delete it (unassigned from filtered user)
