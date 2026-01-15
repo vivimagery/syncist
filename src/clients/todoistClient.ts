@@ -24,12 +24,23 @@ export async function returnTaskInfo(request: Request) {
   return info;
 }
 
-export async function addTask(taskName: string, dueDate?: Due["date"], priority?: TaskInfo["priority"]) {
+export async function addTask({
+  content,
+  due_date,
+  priority,
+  description,
+}: {
+  content: string;
+  due_date?: Due["date"];
+  priority?: TaskInfo["priority"];
+  description?: string;
+}) {
   const task = {
-    content: taskName,
+    content,
     project_id: TODOIST_PROJECT,
-    due_date: dueDate || null,
+    due_date: due_date || null,
     priority: mapPriority(priority),
+    description: description || undefined,
   };
 
   const response = await fetch(`${urlBase}/tasks`, {
@@ -54,7 +65,7 @@ export async function completeTask(taskId: Task["todoist_task_id"]) {
 
 export async function updateTask(
   taskId: Task["todoist_task_id"],
-  taskInfo: { content?: TaskInfo["content"]; due_date?: Due["date"]; priority?: TaskInfo["priority"]}
+  taskInfo: { content?: TaskInfo["content"]; due_date?: Due["date"]; priority?: TaskInfo["priority"]; description?: string }
 ) {
   const mappedTaskInfo = {
     ...taskInfo,
