@@ -45,13 +45,33 @@ All hosting and functions are being built to run on Cloudflare Workers.
 
 ## Configuration
 
+### Wrangler Configuration
+
+Create a `wrangler.toml` file in the project root with your environment variables:
+
+```toml
+name = "syncist"
+main = "src/index.ts"
+compatibility_date = "2023-01-01"
+
+[vars]
+LINEAR_ASSIGNEE_ID = "73ef2e51-08d7-4d74-8c02-9bb12ac15fca"
+SUPABASE_URL = "your-supabase-url"
+SUPABASE_PUBLIC_KEY = "your-supabase-key"
+
+# Note: Sensitive variables like LINEAR_API_KEY and TODOIST_API_KEY 
+# should be set as secrets using: wrangler secret put LINEAR_API_KEY
+```
+
+**Note:** The `wrangler.toml` file is gitignored to protect your configuration. Make sure to create it locally and configure it with your values.
+
 ### Environment Variables
 
 - `LINEAR_API_KEY` (required): Linear API token for authentication
 - `SUPABASE_URL` (required): Supabase instance URL
 - `SUPABASE_PUBLIC_KEY` (required): Supabase public API key
 - `LINEAR_ASSIGNEE_ID` (optional): Filter syncing to only issues assigned to a specific user
-  - Format: Linear user ID (e.g., "user_abc123xyz")
+  - Format: Linear user ID (e.g., "73ef2e51-08d7-4d74-8c02-9bb12ac15fca")
   - If set: Only issues assigned to this user will be synced to Todoist
   - If not set: All issues will be synced (default behavior)
   - Unassigned issues will not be synced when this filter is active
