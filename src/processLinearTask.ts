@@ -3,7 +3,7 @@ import {
   IssueInfo,
   returnIssueInfo,
 } from "./clients/linearClient";
-import { addTask, completeTask, updateTask } from "./clients/todoistClient";
+import { addTask, completeTask, deleteTask, updateTask } from "./clients/todoistClient";
 import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
@@ -69,19 +69,86 @@ export async function processLinearTask(issue: Request, db: any) {
             console.log(completed);
             return completed;
           }
-        } else {
-          // update task in Todoist
-          const updated = await updateTask(task.todoist_task_id, {
-            content: info.title,
-            due_date: info.dueDate || null,
-            priority: info.priority,
-          }).catch((err) => {
-            console.log(`Unable to update task in Todoist: ${err}`);
-            throw new Error(`Unable to update task in Todoist: ${err}`);
-          });
+        } else if (activeStates.includes(info.state.type)) {
+          // Issue is in active state
+          if (task && task.active) {
+            // Task exists and is active, update it in Todoist
+            const updated = await updateTask(task.todoist_task_id, {
+              content: info.title,
+              due_date: info.dueDate || null,
+              priority: info.priority,
+            }).catch((err) => {
+              console.log(`Unable to update task in Todoist: ${err}`);
+              throw new Error(`Unable to update task in Todoist: ${err}`);
+            });
 
-          console.log(updated);
-          return updated;
+            console.log(updated);
+            return updated;
+          } else if (!task || !task.active) {
+            // Task doesn't exist or was deleted - create it (backlog → active transition)
+            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            
+            if (task) {
+              // Task exists but is inactive, update the existing record
+              const { data, error } = await db
+                .from("task")
+                .update({ todoist_task_id: newTask.id, active: true, completed: false })
+                .match({ linear_task_id: info.id });
+
+              if (error) {
+                console.error("error updating task in database", error);
+                return error;
+              }
+
+              await addCommentToIssue(
+                info.id,
+                "This issue is being tracked in Todoist."
+              );
+
+              return data[0];
+            } else {
+              // Task doesn't exist, create new record
+              const { data, error } = await db
+                .from("task")
+                .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
+
+              if (error) {
+                console.error("error adding task to database", error);
+                return error;
+              }
+
+              await addCommentToIssue(
+                info.id,
+                "This issue is being tracked in Todoist."
+              );
+
+              return data[0];
+            }
+          }
+        } else {
+          // Issue is in backlog state
+          if (task && task.active) {
+            // Task exists and is active - delete it (active → backlog transition)
+            const deleted = await deleteTask(task.todoist_task_id);
+            
+            if (deleted) {
+              const { data, error } = await db
+                .from("task")
+                .update({ active: false })
+                .match({ linear_task_id: info.id });
+
+              if (error) {
+                console.error("error updating task in database", error);
+                return error;
+              }
+
+              return {
+                task: data["0"],
+                success: true,
+                message: "Task deleted from Todoist",
+              };
+            }
+          }
         }
         break;
       default:
