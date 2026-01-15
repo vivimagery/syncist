@@ -143,9 +143,15 @@ export async function processLinearTask(issue: Request, db: any) {
               }
 
               return {
-                task: data["0"],
+                task: data[0],
                 success: true,
                 message: "Task deleted from Todoist",
+              };
+            } else {
+              console.error(`Failed to delete task ${task.todoist_task_id} from Todoist`);
+              return {
+                success: false,
+                message: "Failed to delete task from Todoist",
               };
             }
           }
