@@ -69,43 +69,13 @@ export async function processLinearTask(issue: Request, db: any) {
         if (assigneeFilter) {
           const assigneeMatches = info.assigneeId === assigneeFilter;
           
-          // If assignee now matches but task doesn't exist or is inactive, create it (newly assigned to filtered user)
-          if (assigneeMatches && (!task || !task.active) && activeStates.includes(info.state.type)) {
-            console.log(`Creating task for issue ${info.id} - newly assigned to filtered user`);
-            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
-            
-            // If task record exists but is inactive, update it; otherwise insert new
-            if (task && !task.active) {
-              const { data, error } = await db
-                .from("task")
-                .update({ todoist_task_id: newTask.id, active: true, completed: false })
-                .match({ linear_task_id: info.id });
-
-              if (error) {
-                console.error("error updating task in database", error);
-                return error;
-              }
-            } else {
-              const { data, error } = await db
-                .from("task")
-                .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
-
-              if (error) {
-                console.error("error adding task to database", error);
-                return error;
-              }
-            }
-
-            await addCommentToIssue(
-              info.id,
-              "This issue is being tracked in Todoist."
-            );
-
-            return { success: true, message: "Task created" };
+          // If assignee matches and task already exists and is active, skip (already synced)
+          if (assigneeMatches && task && task.active) {
+            console.log(`Task for issue ${info.id} already exists and is active, skipping creation`);
+            // Continue to normal update flow below
           }
-          
           // If assignee doesn't match but task exists, delete it (unassigned from filtered user)
-          if (!assigneeMatches && task && task.active) {
+          else if (!assigneeMatches && task && task.active) {
             console.log(`Deleting task for issue ${info.id} - unassigned from filtered user`);
             await deleteTask(task.todoist_task_id);
             
@@ -129,9 +99,52 @@ export async function processLinearTask(issue: Request, db: any) {
               message: "Task removed from Todoist due to assignee change"
             };
           }
-          
+          // If assignee now matches but task doesn't exist or is inactive, create it (newly assigned to filtered user)
+          else if (assigneeMatches && (!task || !task.active) && activeStates.includes(info.state.type)) {
+            console.log(`Creating task for issue ${info.id} - newly assigned to filtered user`);
+            const newTask: any = await addTask(info.title, info.dueDate, info.priority);
+            
+            // If task record exists but is inactive, update it
+            if (task && !task.active) {
+              const { data, error} = await db
+                .from("task")
+                .update({ todoist_task_id: newTask.id, active: true, completed: false })
+                .match({ linear_task_id: info.id });
+
+              if (error) {
+                console.error("error updating task in database", error);
+                return error;
+              }
+              
+              await addCommentToIssue(
+                info.id,
+                "This issue is being tracked in Todoist."
+              );
+
+              return { success: true, message: "Task created" };
+            } else if (!task) {
+              // Only insert if no task record exists at all
+              const { data, error } = await db
+                .from("task")
+                .insert({ todoist_task_id: newTask.id, linear_task_id: info.id });
+
+              if (error) {
+                // If insert fails due to duplicate, it means create webhook already handled it
+                // This is expected when Linear sends both create and update webhooks quickly
+                console.log("Task already exists in database, skipping insert");
+                return { success: true, message: "Task already tracked" };
+              }
+              
+              await addCommentToIssue(
+                info.id,
+                "This issue is being tracked in Todoist."
+              );
+
+              return { success: true, message: "Task created" };
+            }
+          }
           // If assignee doesn't match and no task exists, skip
-          if (!assigneeMatches && !task) {
+          else if (!assigneeMatches && !task) {
             console.log(`Skipping issue ${info.id} - assignee ${info.assigneeId} does not match filter ${assigneeFilter}`);
             return { success: true, message: "Issue filtered by assignee" };
           }
