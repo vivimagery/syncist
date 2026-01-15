@@ -52,6 +52,11 @@ export async function completeTask(taskId: Task["todoist_task_id"]) {
   return body;
 }
 
+/**
+ * Delete a task from Todoist
+ * @param taskId - The Todoist task ID to delete
+ * @returns Promise<boolean> - Returns true if deletion was successful (HTTP 204), false otherwise
+ */
 export async function deleteTask(taskId: Task["todoist_task_id"]) {
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
     headers,

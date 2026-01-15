@@ -88,7 +88,6 @@ export async function processLinearTask(issue: Request, db: any) {
                 );
 
                 return {
-                  task: data[0],
                   success: true,
                   message: "Task deleted from Todoist due to backlog state",
                 };
