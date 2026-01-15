@@ -88,13 +88,18 @@ export async function processLinearTask(issue: Request, db: any) {
                 );
 
                 return {
-                  task: data["0"],
+                  task: data[0],
                   success: true,
                   message: "Task deleted from Todoist due to backlog state",
                 };
               })
               .catch((err) => {
                 console.log("error deleting task from Todoist", err);
+                return {
+                  success: false,
+                  message: "Failed to delete task from Todoist",
+                  error: err,
+                };
               });
 
             console.log(deleted);
