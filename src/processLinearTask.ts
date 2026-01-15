@@ -3,11 +3,12 @@ import {
   IssueInfo,
   returnIssueInfo,
 } from "./clients/linearClient";
-import { addTask, completeTask, updateTask } from "./clients/todoistClient";
+import { addTask, completeTask, deleteTask, updateTask } from "./clients/todoistClient";
 import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
 const completeStates = ["completed"];
+const backlogStates = ["backlog"];
 
 /**
  * Helper function to create a new Todoist task and database entry for a Linear issue
@@ -78,6 +79,36 @@ export async function processLinearTask(issue: Request, db: any) {
 
             console.log(completed);
             return completed;
+          }
+        } else if (backlogStates.includes(info.state.type)) {
+          // If task moved back to backlog, delete from Todoist
+          if (task && task.active) {
+            const deleted = await deleteTask(task.todoist_task_id)
+              .then(async () => {
+                const { data, error } = await db
+                  .from("task")
+                  .update({ active: false })
+                  .match({ linear_task_id: info.id });
+
+                if (error) throw new Error(error);
+
+                await addCommentToIssue(
+                  info.id,
+                  "Issue moved to backlog. Task deleted from Todoist."
+                );
+
+                return {
+                  task: data["0"],
+                  success: true,
+                  message: "Task deleted from Todoist",
+                };
+              })
+              .catch((err) => {
+                console.log("error deleting task from Todoist", err);
+              });
+
+            console.log(deleted);
+            return deleted;
           }
         } else if (activeStates.includes(info.state.type)) {
           // If task is now in active state
