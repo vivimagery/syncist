@@ -5,7 +5,7 @@ compatibility_date = "2023-01-01"
 [vars]
 # Optional: Filter syncing to only issues assigned to a specific user
 # Uncomment and set to your Linear user ID to enable filtering
-LINEAR_ASSIGNEE_ID = "73ef2e51-08d7-4d74-8c02-9bb12ac15fca"
+# LINEAR_ASSIGNEE_ID = "your-linear-user-id-here"
 
 # Required: Supabase configuration
 SUPABASE_URL = "your-supabase-url-here"
@@ -19,4 +19,5 @@ SUPABASE_PUBLIC_KEY = "your-supabase-public-key-here"
 # To use this file:
 # 1. Copy this file to wrangler.toml: cp wrangler.toml.example wrangler.toml
 # 2. Replace the placeholder values with your actual configuration
-# 3. Set your secrets using the wrangler secret commands above
+# 3. Uncomment and set LINEAR_ASSIGNEE_ID if you want to filter by assignee
+# 4. Set your secrets using the wrangler secret commands above

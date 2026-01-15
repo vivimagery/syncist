@@ -55,7 +55,8 @@ main = "src/index.ts"
 compatibility_date = "2023-01-01"
 
 [vars]
-LINEAR_ASSIGNEE_ID = "73ef2e51-08d7-4d74-8c02-9bb12ac15fca"
+# Uncomment to enable assignee filtering
+# LINEAR_ASSIGNEE_ID = "your-linear-user-id"
 SUPABASE_URL = "your-supabase-url"
 SUPABASE_PUBLIC_KEY = "your-supabase-key"
 
@@ -63,7 +64,7 @@ SUPABASE_PUBLIC_KEY = "your-supabase-key"
 # should be set as secrets using: wrangler secret put LINEAR_API_KEY
 ```
 
-**Note:** The `wrangler.toml` file is gitignored to protect your configuration. Make sure to create it locally and configure it with your values.
+**Note:** The `wrangler.toml` file is gitignored to protect your configuration. Make sure to create it locally and configure it with your values. You can copy `wrangler.toml.example` as a starting point.
 
 ### Environment Variables
 
@@ -71,7 +72,7 @@ SUPABASE_PUBLIC_KEY = "your-supabase-key"
 - `SUPABASE_URL` (required): Supabase instance URL
 - `SUPABASE_PUBLIC_KEY` (required): Supabase public API key
 - `LINEAR_ASSIGNEE_ID` (optional): Filter syncing to only issues assigned to a specific user
-  - Format: Linear user ID (e.g., "73ef2e51-08d7-4d74-8c02-9bb12ac15fca")
+  - Format: Linear user ID (e.g., "user-abc-123-def-456")
   - If set: Only issues assigned to this user will be synced to Todoist
   - If not set: All issues will be synced (default behavior)
   - Unassigned issues will not be synced when this filter is active
