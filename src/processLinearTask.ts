@@ -58,7 +58,7 @@ export async function processLinearTask(issue: Request, db: any) {
 
                 if (error) throw new Error(error);
                 return {
-                  task: data["0"],
+                  task: data[0],
                   success: true,
                   message: "Task completion status synced",
                 };
