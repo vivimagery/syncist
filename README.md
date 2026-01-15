@@ -64,7 +64,7 @@ SUPABASE_PUBLIC_KEY = "your-supabase-key"
 # should be set as secrets using: wrangler secret put LINEAR_API_KEY
 ```
 
-**Note:** The `wrangler.toml` file is gitignored to protect your configuration. Make sure to create it locally and configure it with your values. You can copy `wrangler.toml.example` as a starting point.
+**Note:** The `wrangler.toml` file is gitignored to protect your configuration. Make sure to create it locally and configure it with your values.
 
 ### Environment Variables
 
