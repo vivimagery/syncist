@@ -111,6 +111,7 @@ export async function returnIssueInfo(request: Request) {
       name: body.data.state.name,
       type: body.data.state.type,
     },
+    url: body.data.url,
   };
   return info;
 }
@@ -124,6 +125,7 @@ export interface IssueInfo {
   assigneeId?: string;
   dueDate: DateYMDString | null;
   state: IssueInfoState;
+  url?: string;
 }
 
 interface IssueInfoState {
