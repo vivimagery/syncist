@@ -59,8 +59,8 @@ export async function updateTask(
   const mappedTaskInfo = {
     ...taskInfo,
     // Only map the priority if it exists
-    ...(taskInfo.priority !== undefined && { 
-      priority: mapPriority(taskInfo.priority) 
+    ...(taskInfo.priority !== undefined && {
+      priority: mapPriority(taskInfo.priority)
     })
   };
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
@@ -71,6 +71,15 @@ export async function updateTask(
 
   const body = await response.body;
   return body;
+}
+
+export async function deleteTask(taskId: Task["todoist_task_id"]) {
+  const response = await fetch(`${urlBase}/tasks/${taskId}`, {
+    headers,
+    method: "DELETE",
+  });
+
+  return response.ok;
 }
 
 export interface TaskInfo {
