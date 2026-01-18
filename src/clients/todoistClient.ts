@@ -63,9 +63,16 @@ export async function completeTask(taskId: Task["todoist_task_id"]) {
   return body;
 }
 
+export interface UpdateTaskOptions {
+  content?: TaskInfo["content"];
+  due_date?: Due["date"];
+  priority?: TaskInfo["priority"];
+  description?: string;
+}
+
 export async function updateTask(
   taskId: Task["todoist_task_id"],
-  taskInfo: { content?: TaskInfo["content"]; due_date?: Due["date"]; priority?: TaskInfo["priority"]; description?: string }
+  taskInfo: UpdateTaskOptions
 ) {
   const mappedTaskInfo = {
     ...taskInfo,
