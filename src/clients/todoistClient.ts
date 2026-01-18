@@ -40,7 +40,7 @@ export async function addTask({
     project_id: TODOIST_PROJECT,
     due_date: due_date || null,
     priority: mapPriority(priority),
-    description: description || undefined,
+    ...(description && { description }),
   };
 
   const response = await fetch(`${urlBase}/tasks`, {
