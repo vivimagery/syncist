@@ -1,7 +1,7 @@
 import { Task } from "../types/database";
 import { DateYMDString } from "../types/dates";
 
-const urlBase = "https://api.todoist.com/rest/v2";
+const urlBase = "https://api.todoist.com/api/v1";
 const headers = {
   // @ts-ignore
   Authorization: `Bearer ${TODOIST_API_KEY}`,
