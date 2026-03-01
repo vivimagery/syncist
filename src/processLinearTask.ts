@@ -18,13 +18,12 @@ export async function processLinearTask(issue: Request, db: any) {
       case "create":
         // Only add a task if issue is in progress or queue up. Ignore backlog and completion states.
         if (activeStates.includes(info.state.type)) {
-          const task: any = await addTask(info.title, info.dueDate, info.priority);
-
-          if (!task?.id) {
-            console.error("Todoist task creation returned no id", task);
-            throw new Error("Todoist task creation returned no id");
-          }
-
+          const task: any = await addTask({
+            content: info.title,
+            due_date: info.dueDate,
+            priority: info.priority,
+            description: info.url,
+          });
           const { data, error } = await db
             .from("task")
             .insert({ todoist_task_id: task.id, linear_task_id: info.id });
@@ -81,6 +80,7 @@ export async function processLinearTask(issue: Request, db: any) {
             content: info.title,
             due_date: info.dueDate || null,
             priority: info.priority,
+            description: info.url,
           }).catch((err) => {
             console.log(`Unable to update task in Todoist: ${err}`);
             throw new Error(`Unable to update task in Todoist: ${err}`);
