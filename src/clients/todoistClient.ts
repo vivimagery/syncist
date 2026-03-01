@@ -1,7 +1,7 @@
 import { Task } from "../types/database";
 import { DateYMDString } from "../types/dates";
 
-const urlBase = "https://api.todoist.com/rest/v2";
+const urlBase = "https://api.todoist.com/api/v1";
 const headers = {
   // @ts-ignore
   Authorization: `Bearer ${TODOIST_API_KEY}`,
@@ -80,14 +80,14 @@ export interface TaskInfo {
     | "item:uncompleted"
     | "item:updated"
     | "item:deleted";
-  taskId: number;
+  taskId: string;
   content?: string;
-  projectId?: number | null;
+  projectId?: string | null;
   completed: boolean;
   labels?: string[];
   priority?: 1 | 2 | 3 | 4;
   dueDate?: Due | null;
-  assignee?: number | null;
+  assignee?: string | null;
 }
 
 interface Due {
