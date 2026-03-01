@@ -8,6 +8,13 @@ const headers = {
   "Content-Type": "application/json",
 };
 
+async function assertOk(response: Response, context: string) {
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`${context} failed (${response.status}): ${text}`);
+  }
+}
+
 export async function returnTaskInfo(request: Request) {
   const body: any = await request.json();
   const info: TaskInfo = {
@@ -38,8 +45,8 @@ export async function addTask(taskName: string, dueDate?: Due["date"], priority?
     body: JSON.stringify(task),
   });
 
-  const body = await response.json();
-  return body;
+  await assertOk(response, "Todoist addTask");
+  return response.json();
 }
 
 export async function completeTask(taskId: Task["todoist_task_id"]) {
@@ -48,8 +55,7 @@ export async function completeTask(taskId: Task["todoist_task_id"]) {
     method: "POST",
   });
 
-  const body = await response.body;
-  return body;
+  await assertOk(response, "Todoist completeTask");
 }
 
 export async function updateTask(
@@ -69,8 +75,8 @@ export async function updateTask(
     body: JSON.stringify(mappedTaskInfo),
   });
 
-  const body = await response.body;
-  return body;
+  await assertOk(response, "Todoist updateTask");
+  return response.json();
 }
 
 export interface TaskInfo {
