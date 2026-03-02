@@ -1,5 +1,5 @@
 import { getTaskFromDb } from "./clients/dbClient";
-import { addCommentToIssue, markIssueComplete, reopenIssue } from "./clients/linearClient";
+import { addCommentToIssue, deleteIssue, markIssueComplete, reopenIssue } from "./clients/linearClient";
 import { returnTaskInfo, TaskInfo } from "./clients/todoistClient";
 import { Task, Team } from "./types/database";
 
@@ -40,16 +40,18 @@ export async function processTodoistTask(issue: Request, db: any) {
           throw new Error(error);
         }
 
-        await addCommentToIssue(
-          task.linear_task_id,
-          "Issue deleted from Todoist. Updates will no longer be synced."
-        );
+        const deleted = await deleteIssue(task.linear_task_id);
 
-        return {
-          task: data["0"],
-          success: true,
-          message: "Task deletion status synced",
-        };
+        if (deleted) {
+          return {
+            task: data["0"],
+            success: true,
+            message: "Task deleted in Linear",
+          };
+        } else {
+          console.log("Failed to delete issue in Linear");
+          throw new Error("Failed to delete issue in Linear");
+        }
       }
 
       return;
