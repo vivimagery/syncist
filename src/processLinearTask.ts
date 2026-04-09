@@ -7,8 +7,8 @@ import { addTask, completeTask, deleteTask, updateTask } from "./clients/todoist
 import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
-const completeStates = ["completed"];
-const backlogStates = ["backlog"];
+const completeStates = ["completed", "cancelled"];
+const backlogStates = ["backlog", "triage"];
 
 /**
  * Helper function to create a new Todoist task and database entry for a Linear issue
