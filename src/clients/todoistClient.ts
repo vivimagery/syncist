@@ -1,12 +1,19 @@
 import { Task } from "../types/database";
 import { DateYMDString } from "../types/dates";
 
-const urlBase = "https://api.todoist.com/rest/v2";
+const urlBase = "https://api.todoist.com/api/v1";
 const headers = {
   // @ts-ignore
   Authorization: `Bearer ${TODOIST_API_KEY}`,
   "Content-Type": "application/json",
 };
+
+async function assertOk(response: Response, context: string) {
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`${context} failed (${response.status}): ${text}`);
+  }
+}
 
 export async function returnTaskInfo(request: Request) {
   const body: any = await request.json();
@@ -24,12 +31,23 @@ export async function returnTaskInfo(request: Request) {
   return info;
 }
 
-export async function addTask(taskName: string, dueDate?: Due["date"], priority?: TaskInfo["priority"]) {
+export async function addTask({
+  content,
+  due_date,
+  priority,
+  description,
+}: {
+  content: string;
+  due_date?: Due["date"];
+  priority?: TaskInfo["priority"];
+  description?: string;
+}) {
   const task = {
-    content: taskName,
+    content,
     project_id: TODOIST_PROJECT,
-    due_date: dueDate || null,
+    due_date: due_date || null,
     priority: mapPriority(priority),
+    ...(description && { description }),
   };
 
   const response = await fetch(`${urlBase}/tasks`, {
@@ -38,8 +56,8 @@ export async function addTask(taskName: string, dueDate?: Due["date"], priority?
     body: JSON.stringify(task),
   });
 
-  const body = await response.json();
-  return body;
+  await assertOk(response, "Todoist addTask");
+  return response.json();
 }
 
 export async function completeTask(taskId: Task["todoist_task_id"]) {
@@ -48,13 +66,19 @@ export async function completeTask(taskId: Task["todoist_task_id"]) {
     method: "POST",
   });
 
-  const body = await response.body;
-  return body;
+  await assertOk(response, "Todoist completeTask");
+}
+
+export interface UpdateTaskOptions {
+  content?: TaskInfo["content"];
+  due_date?: Due["date"];
+  priority?: TaskInfo["priority"];
+  description?: string;
 }
 
 export async function updateTask(
   taskId: Task["todoist_task_id"],
-  taskInfo: { content?: TaskInfo["content"]; due_date?: Due["date"]; priority?: TaskInfo["priority"]}
+  taskInfo: UpdateTaskOptions
 ) {
   const mappedTaskInfo = {
     ...taskInfo,
@@ -69,8 +93,8 @@ export async function updateTask(
     body: JSON.stringify(mappedTaskInfo),
   });
 
-  const body = await response.body;
-  return body;
+  await assertOk(response, "Todoist updateTask");
+  return response.json();
 }
 
 export async function deleteTask(taskId: Task["todoist_task_id"]) {
@@ -89,14 +113,14 @@ export interface TaskInfo {
     | "item:uncompleted"
     | "item:updated"
     | "item:deleted";
-  taskId: number;
+  taskId: string;
   content?: string;
-  projectId?: number | null;
+  projectId?: string | null;
   completed: boolean;
   labels?: string[];
   priority?: 1 | 2 | 3 | 4;
   dueDate?: Due | null;
-  assignee?: number | null;
+  assignee?: string | null;
 }
 
 interface Due {
