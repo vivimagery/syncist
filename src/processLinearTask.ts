@@ -29,6 +29,11 @@ async function createTaskInTodoistAndDb(
 
   if (error) {
     console.error("error adding task to database", error);
+    try {
+      await deleteTask(task.id);
+    } catch (cleanupError) {
+      console.error("error cleaning up todoist task after database failure", cleanupError);
+    }
     // Clean up orphaned Todoist task if DB insert fails
     try {
       await deleteTask(task.id);
