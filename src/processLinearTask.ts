@@ -29,7 +29,14 @@ async function createTaskInTodoistAndDb(
 
   if (error) {
     console.error("error adding task to database", error);
-    return error;
+    // Clean up orphaned Todoist task if DB insert fails
+    try {
+      await deleteTask(task.id);
+      console.log("Cleaned up orphaned Todoist task after database failure");
+    } catch (cleanupError) {
+      console.error("error cleaning up todoist task after database failure", cleanupError);
+    }
+    throw error;
   }
 
   await addCommentToIssue(
@@ -64,56 +71,64 @@ export async function processLinearTask(issue: Request, db: any) {
         if (completeStates.includes(info.state.type)) {
           // If not completed, mark completed in Todoist
           if (task && !task.completed) {
-            const completed = await completeTask(task.todoist_task_id)
-              .then(async () => {
-                const { data, error } = await db
-                  .from("task")
-                  .update({ completed: true, active: false })
-                  .match({ linear_task_id: info.id });
+            try {
+              await completeTask(task.todoist_task_id);
+              
+              const { data, error } = await db
+                .from("task")
+                .update({ completed: true, active: false })
+                .match({ linear_task_id: info.id });
 
-                if (error) throw new Error(error);
-                return {
-                  task: data["0"],
-                  success: true,
-                  message: "Task completion status synced",
-                };
-              })
-              .catch((err) => {
-                console.log("error updating task in db", err);
-              });
+              if (error) {
+                console.error("error updating task in database", error);
+                throw error;
+              }
 
-            console.log(completed);
-            return completed;
+              return {
+                task: data[0],
+                success: true,
+                message: "Task completion status synced",
+              };
+            } catch (err) {
+              console.error("error completing task", err);
+              throw err;
+            }
           }
         } else if (backlogStates.includes(info.state.type)) {
           // If task moved back to backlog, delete from Todoist
           if (task && task.active) {
-            const deleted = await deleteTask(task.todoist_task_id)
-              .then(async () => {
-                const { data, error } = await db
-                  .from("task")
-                  .update({ active: false })
-                  .match({ linear_task_id: info.id });
+            try {
+              await deleteTask(task.todoist_task_id);
+            } catch (err: any) {
+              // If task is already deleted (404), that's fine - continue to mark as inactive
+              if (!err.message?.includes('404')) {
+                console.error("error deleting task from Todoist", err);
+                throw err; // Rethrow non-404 errors so webhook can be retried
+              }
+              console.log("Task already deleted from Todoist (404), marking inactive");
+            }
 
-                if (error) throw new Error(error);
+            // Update database to mark task as inactive
+            const { data, error } = await db
+              .from("task")
+              .update({ active: false })
+              .match({ linear_task_id: info.id });
 
-                await addCommentToIssue(
-                  info.id,
-                  "Issue moved to backlog. Task deleted from Todoist."
-                );
+            if (error) {
+              console.error("error updating task in database", error);
+              throw error;
+            }
 
-                return {
-                  task: data["0"],
-                  success: true,
-                  message: "Task deleted from Todoist",
-                };
-              })
-              .catch((err) => {
-                console.log("error deleting task from Todoist", err);
-              });
+            await addCommentToIssue(
+              info.id,
+              "Issue moved to backlog. Task deleted from Todoist."
+            );
 
-            console.log(deleted);
-            return deleted;
+            return {
+              task: data[0],
+              success: true,
+              message: "Task deleted from Todoist",
+            };
           }
         } else if (activeStates.includes(info.state.type)) {
           // If task is now in active state
@@ -135,7 +150,14 @@ export async function processLinearTask(issue: Request, db: any) {
 
             if (error) {
               console.error("error updating task in database", error);
-              return error;
+              // Clean up orphaned Todoist task if DB update fails
+              try {
+                await deleteTask(newTask.id);
+                console.log("Cleaned up orphaned Todoist task after database failure");
+              } catch (cleanupError) {
+                console.error("error cleaning up todoist task after database failure", cleanupError);
+              }
+              throw error;
             }
 
             await addCommentToIssue(
