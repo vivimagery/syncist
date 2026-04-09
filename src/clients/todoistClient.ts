@@ -79,7 +79,9 @@ export async function deleteTask(taskId: Task["todoist_task_id"]) {
     method: "DELETE",
   });
 
-  return response.ok;
+  if (!response.ok) {
+    throw new Error(`Failed to delete task ${taskId}: ${response.status}`);
+  }
 }
 
 export interface TaskInfo {
