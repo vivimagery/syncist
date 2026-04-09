@@ -21,7 +21,7 @@ async function createTaskInTodoistAndDb(
     content: info.title,
     due_date: info.dueDate,
     priority: info.priority,
-    description: info.url,
+    description: `[Linear](${info.url})`,
   });
   const { data, error } = await db
     .from("task")
@@ -146,7 +146,7 @@ export async function processLinearTask(issue: Request, db: any) {
               content: info.title,
               due_date: info.dueDate,
               priority: info.priority,
-              description: info.url,
+              description: `[Linear](${info.url})`,
             });
             const { data, error } = await db
               .from("task")
@@ -177,7 +177,7 @@ export async function processLinearTask(issue: Request, db: any) {
               content: info.title,
               due_date: info.dueDate || null,
               priority: info.priority,
-              description: info.url,
+              description: `[Linear](${info.url})`,
             }).catch((err) => {
               console.log(`Unable to update task in Todoist: ${err}`);
               throw new Error(`Unable to update task in Todoist: ${err}`);
