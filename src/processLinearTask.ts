@@ -3,8 +3,14 @@ import {
   IssueInfo,
   returnIssueInfo,
 } from "./clients/linearClient";
-import { addTask, completeTask, deleteTask, updateTask } from "./clients/todoistClient";
-import { Task } from "./types/database";
+import {
+  addTask,
+  completeTask,
+  deleteTask,
+  moveTask,
+  updateTask,
+} from "./clients/todoistClient";
+import { Task, Team } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
 const completeStates = ["completed"];
@@ -71,6 +77,36 @@ export async function processLinearTask(issue: Request, db: any) {
           .select()
           .eq("linear_task_id", info.id)
           .maybeSingle();
+
+        // Team move: relocate the Todoist task to the destination team's project.
+        // updatedFrom.teamId is only present when the team actually changed.
+        if (
+          info.previousTeamId &&
+          info.teamId &&
+          info.previousTeamId !== info.teamId &&
+          task &&
+          task.active
+        ) {
+          const { data: destTeam }: { data: Team | null } = await db
+            .from("team")
+            .select()
+            .eq("linear_team_id", info.teamId)
+            .maybeSingle();
+
+          if (destTeam?.todoist_project_id) {
+            await moveTask(task.todoist_task_id, destTeam.todoist_project_id);
+            await addCommentToIssue(
+              info.id,
+              `Issue moved to ${destTeam.name}. Todoist task relocated.`
+            );
+            return {
+              success: true,
+              message: `Task moved to project ${destTeam.todoist_project_id}`,
+            };
+          }
+          // No destination team configured — fall through to state-based logic,
+          // which will delete the task if the new team places it in a backlog state.
+        }
 
         // If task completed in Linear
         if (completeStates.includes(info.state.type)) {

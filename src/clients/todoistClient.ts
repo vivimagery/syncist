@@ -97,6 +97,20 @@ export async function updateTask(
   return response.json();
 }
 
+export async function moveTask(
+  taskId: Task["todoist_task_id"],
+  projectId: string
+) {
+  const response = await fetch(`${urlBase}/tasks/${taskId}/move`, {
+    headers,
+    method: "POST",
+    body: JSON.stringify({ project_id: projectId }),
+  });
+
+  await assertOk(response, "Todoist moveTask");
+  return response.json();
+}
+
 export async function deleteTask(taskId: Task["todoist_task_id"]) {
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
     headers,
