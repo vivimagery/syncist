@@ -10,7 +10,7 @@ import {
   moveTask,
   updateTask,
 } from "./clients/todoistClient";
-import { Task, Team } from "./types/database";
+import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
 const completeStates = ["completed"];
@@ -77,32 +77,6 @@ export async function processLinearTask(issue: Request, db: any) {
           .select()
           .eq("linear_task_id", info.id)
           .maybeSingle();
-
-        // Team move: relocate the Todoist task to the destination team's project.
-        // updatedFrom.teamId is only present when the team actually changed.
-        if (
-          info.previousTeamId &&
-          info.teamId &&
-          info.previousTeamId !== info.teamId &&
-          task &&
-          task.active
-        ) {
-          const { data: destTeam }: { data: Team | null } = await db
-            .from("team")
-            .select()
-            .eq("linear_team_id", info.teamId)
-            .maybeSingle();
-
-          if (destTeam?.todoist_project_id) {
-            await moveTask(task.todoist_task_id, destTeam.todoist_project_id);
-            return {
-              success: true,
-              message: `Task moved to project ${destTeam.todoist_project_id}`,
-            };
-          }
-          // No destination team configured — fall through to state-based logic,
-          // which will delete the task if the new team places it in a backlog state.
-        }
 
         // If task completed in Linear
         if (completeStates.includes(info.state.type)) {
@@ -204,7 +178,17 @@ export async function processLinearTask(issue: Request, db: any) {
 
             return data[0];
           } else {
-            // Task exists and is active - update it
+            // Task exists and is active - move it if team changed, then update fields
+            if (info.previousTeamId) {
+              const { data: destTeam } = await db
+                .from("team")
+                .select()
+                .eq("linear_team_id", info.teamId)
+                .maybeSingle();
+              if (destTeam?.todoist_project_id) {
+                await moveTask(task.todoist_task_id, destTeam.todoist_project_id);
+              }
+            }
             const updated = await updateTask(task.todoist_task_id, {
               content: info.title,
               due_date: info.dueDate || null,
