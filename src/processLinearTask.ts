@@ -95,10 +95,6 @@ export async function processLinearTask(issue: Request, db: any) {
 
           if (destTeam?.todoist_project_id) {
             await moveTask(task.todoist_task_id, destTeam.todoist_project_id);
-            await addCommentToIssue(
-              info.id,
-              `Issue moved to ${destTeam.name}. Todoist task relocated.`
-            );
             return {
               success: true,
               message: `Task moved to project ${destTeam.todoist_project_id}`,
