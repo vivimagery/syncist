@@ -3,7 +3,13 @@ import {
   IssueInfo,
   returnIssueInfo,
 } from "./clients/linearClient";
-import { addTask, completeTask, deleteTask, updateTask } from "./clients/todoistClient";
+import {
+  addTask,
+  completeTask,
+  deleteTask,
+  moveTask,
+  updateTask,
+} from "./clients/todoistClient";
 import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
@@ -172,7 +178,17 @@ export async function processLinearTask(issue: Request, db: any) {
 
             return data[0];
           } else {
-            // Task exists and is active - update it
+            // Task exists and is active - move it if team changed, then update fields
+            if (info.previousTeamId) {
+              const { data: destTeam } = await db
+                .from("team")
+                .select()
+                .eq("linear_team_id", info.teamId)
+                .maybeSingle();
+              if (destTeam?.todoist_project_id) {
+                await moveTask(task.todoist_task_id, destTeam.todoist_project_id);
+              }
+            }
             const updated = await updateTask(task.todoist_task_id, {
               content: info.title,
               due_date: info.dueDate || null,

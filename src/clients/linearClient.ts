@@ -108,6 +108,8 @@ export async function returnIssueInfo(request: Request) {
     assigneeId: body.data.assigneeId,
     dueDate: body.data.dueDate,
     url: body.data.url,
+    teamId: body.data.teamId,
+    previousTeamId: body.updatedFrom?.teamId,
     state: {
       name: body.data.state.name,
       type: body.data.state.type,
@@ -125,6 +127,8 @@ export interface IssueInfo {
   assigneeId?: string;
   dueDate: DateYMDString | null;
   url: string;
+  teamId?: string;
+  previousTeamId?: string;
   state: IssueInfoState;
 }
 
