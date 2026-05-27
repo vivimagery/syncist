@@ -200,49 +200,22 @@ export async function processLinearTask(issue: Request, db: any) {
         }
         break;
       case "remove":
-        // Check if task exists in Todoist
         const { data: taskToDelete }: { data: Task | null } = await db
           .from("task")
           .select()
           .eq("linear_task_id", info.id)
           .maybeSingle();
+        if (!taskToDelete) return null;
 
-        if (taskToDelete) {
-          try {
-            await deleteTask(taskToDelete.todoist_task_id);
+        await deleteTask(taskToDelete.todoist_task_id);
+        const { error: deleteRowError } = await db
+          .from("task")
+          .delete()
+          .eq("linear_task_id", info.id);
+        if (deleteRowError) throw deleteRowError;
 
-            // Remove from database
-            const { error } = await db
-              .from("task")
-              .delete()
-              .eq("linear_task_id", info.id);
-
-            if (error) {
-              throw new Error(`Failed to delete task from database: ${error.message || error}`);
-            }
-
-            const deleted = {
-              task: taskToDelete,
-              success: true,
-              message: "Task deleted from Todoist and database",
-            };
-            console.log(`Task deleted successfully: Linear ID ${info.id}, Todoist ID ${taskToDelete.todoist_task_id}`);
-            return deleted;
-          } catch (err) {
-            console.error(`Error deleting task (Linear ID ${info.id}):`, err);
-            const deleted = {
-              success: false,
-              message: `Unable to delete task: ${err instanceof Error ? err.message : err}`,
-            };
-            return deleted;
-          }
-        } else {
-          return {
-            success: false,
-            message: "Task not found in database, nothing to delete",
-          };
-        }
-        break;
+        console.log(`Task deleted: Linear ID ${info.id}, Todoist ID ${taskToDelete.todoist_task_id}`);
+        return taskToDelete;
       default:
         return null;
   }
