@@ -35,11 +35,6 @@ async function createTaskInTodoistAndDb(
 
   if (error) {
     console.error("error adding task to database", error);
-    try {
-      await deleteTask(task.id);
-    } catch (cleanupError) {
-      console.error("error cleaning up todoist task after database failure", cleanupError);
-    }
     // Clean up orphaned Todoist task if DB insert fails
     try {
       await deleteTask(task.id);
@@ -72,7 +67,7 @@ export async function processLinearTask(issue: Request, db: any) {
         break;
       case "update":
         // Check if task is in Todoist
-        const { data: task }: { data: Task } = await db
+        const { data: task }: { data: Task | null } = await db
           .from("task")
           .select()
           .eq("linear_task_id", info.id)
@@ -204,6 +199,23 @@ export async function processLinearTask(issue: Request, db: any) {
           }
         }
         break;
+      case "remove":
+        const { data: taskToDelete }: { data: Task | null } = await db
+          .from("task")
+          .select()
+          .eq("linear_task_id", info.id)
+          .maybeSingle();
+        if (!taskToDelete) return null;
+
+        await deleteTask(taskToDelete.todoist_task_id);
+        const { error: deleteRowError } = await db
+          .from("task")
+          .delete()
+          .eq("linear_task_id", info.id);
+        if (deleteRowError) throw deleteRowError;
+
+        console.log(`Task deleted: Linear ID ${info.id}, Todoist ID ${taskToDelete.todoist_task_id}`);
+        return taskToDelete;
       default:
         return null;
   }

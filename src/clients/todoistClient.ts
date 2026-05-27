@@ -83,8 +83,8 @@ export async function updateTask(
   const mappedTaskInfo = {
     ...taskInfo,
     // Only map the priority if it exists
-    ...(taskInfo.priority !== undefined && { 
-      priority: mapPriority(taskInfo.priority) 
+    ...(taskInfo.priority !== undefined && {
+      priority: mapPriority(taskInfo.priority)
     })
   };
   const response = await fetch(`${urlBase}/tasks/${taskId}`, {
