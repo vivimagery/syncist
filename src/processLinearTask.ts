@@ -14,7 +14,9 @@ import { Task } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
 const completeStates = ["completed"];
-const backlogStates = ["backlog", "triage", "cancelled"];
+// NOTE: Linear's state.type for cancelled issues is "canceled" (one L, American
+// spelling). A previous "cancelled" here never matched, so cancel never deleted.
+const backlogStates = ["backlog", "triage", "canceled"];
 
 /**
  * Helper function to create a new Todoist task and database entry for a Linear issue
@@ -31,7 +33,7 @@ async function createTaskInTodoistAndDb(
   });
   const { data, error } = await db
     .from("task")
-    .insert({ todoist_task_id: task.id, linear_task_id: info.id });
+    .insert({ todoist_task_id: task.id, linear_task_id: info.id, active: true });
 
   if (error) {
     console.error("error adding task to database", error);
