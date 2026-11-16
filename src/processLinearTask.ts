@@ -10,13 +10,43 @@ import {
   moveTask,
   updateTask,
 } from "./clients/todoistClient";
-import { Task } from "./types/database";
+import { Task, Team } from "./types/database";
 
 const activeStates = ["unstarted", "started"];
 const completeStates = ["completed"];
 // NOTE: Linear's state.type for cancelled issues is "canceled" (one L, American
 // spelling). A previous "cancelled" here never matched, so cancel never deleted.
 const backlogStates = ["backlog", "triage", "canceled"];
+
+/**
+ * Resolves the issue's Linear team. A team is tracked in Todoist only if its
+ * row in the `team` table is active and has a todoist_project_id (e.g.
+ * Personal is tracked, Work has active = false). If the payload has no team,
+ * keep the old behavior: tracked.
+ */
+async function resolveTeam(
+  info: IssueInfo,
+  db: any
+): Promise<{ team: Team | null; tracked: boolean }> {
+  if (!info.teamId) return { team: null, tracked: true };
+
+  const { data: team, error } = await db
+    .from("team")
+    .select()
+    .eq("linear_team_id", info.teamId)
+    .maybeSingle();
+
+  if (error) {
+    // Never treat a failed lookup as "untracked" - that would delete tasks
+    console.error("error looking up team in database", error);
+    throw error;
+  }
+
+  return {
+    team,
+    tracked: !!team?.todoist_project_id && team.active !== false,
+  };
+}
 
 /**
  * Helper function to create a new Todoist task and database entry for a Linear issue
@@ -55,18 +85,63 @@ async function createTaskInTodoistAndDb(
   return data[0];
 }
 
+/**
+ * Helper function to delete an issue's task from Todoist and mark it inactive in the database
+ */
+async function removeTaskFromTodoist(
+  task: Task,
+  info: IssueInfo,
+  db: any,
+  comment: string,
+  message: string
+) {
+  try {
+    await deleteTask(task.todoist_task_id);
+  } catch (err: any) {
+    // If task is already deleted (404), that's fine - continue to mark as inactive
+    if (!err.message?.includes('404')) {
+      console.error("error deleting task from Todoist", err);
+      throw err; // Rethrow non-404 errors so webhook can be retried
+    }
+    console.log("Task already deleted from Todoist (404), marking inactive");
+  }
+
+  // Update database to mark task as inactive
+  const { data, error } = await db
+    .from("task")
+    .update({ active: false })
+    .match({ linear_task_id: info.id });
+
+  if (error) {
+    console.error("error updating task in database", error);
+    throw error;
+  }
+
+  await addCommentToIssue(info.id, comment);
+
+  return {
+    task: data[0],
+    success: true,
+    message,
+  };
+}
+
 export async function processLinearTask(issue: Request, db: any) {
   console.log("processLinearTask");
     const info: IssueInfo = await returnIssueInfo(issue);
     console.log(info);
 
     switch (info.action) {
-      case "create":
-        // Only add a task if issue is in progress or queue up. Ignore backlog and completion states.
-        if (activeStates.includes(info.state.type)) {
+      case "create": {
+        // Only add a task if issue is in progress or queue up in a tracked team.
+        // Ignore backlog and completion states.
+        if (!activeStates.includes(info.state.type)) break;
+        const { tracked } = await resolveTeam(info, db);
+        if (tracked) {
           return await createTaskInTodoistAndDb(info, db);
         }
         break;
+      }
       case "update":
         // Check if task is in Todoist
         const { data: task }: { data: Task | null } = await db
@@ -75,13 +150,30 @@ export async function processLinearTask(issue: Request, db: any) {
           .eq("linear_task_id", info.id)
           .maybeSingle();
 
+        const { team, tracked } = await resolveTeam(info, db);
+
+        // Issue is in a team that isn't tracked in Todoist (e.g. moved Personal → Work):
+        // delete the task if it's still in Todoist, and never create or recreate it.
+        if (!tracked) {
+          if (task && task.active) {
+            return await removeTaskFromTodoist(
+              task,
+              info,
+              db,
+              "Issue is in a team that isn't tracked in Todoist. Task deleted from Todoist.",
+              "Task deleted from Todoist (untracked team)"
+            );
+          }
+          break;
+        }
+
         // If task completed in Linear
         if (completeStates.includes(info.state.type)) {
           // If not completed, mark completed in Todoist
           if (task && !task.completed) {
             try {
               await completeTask(task.todoist_task_id);
-              
+
               const { data, error } = await db
                 .from("task")
                 .update({ completed: true, active: false })
@@ -105,38 +197,13 @@ export async function processLinearTask(issue: Request, db: any) {
         } else if (backlogStates.includes(info.state.type)) {
           // If task moved back to backlog, delete from Todoist
           if (task && task.active) {
-            try {
-              await deleteTask(task.todoist_task_id);
-            } catch (err: any) {
-              // If task is already deleted (404), that's fine - continue to mark as inactive
-              if (!err.message?.includes('404')) {
-                console.error("error deleting task from Todoist", err);
-                throw err; // Rethrow non-404 errors so webhook can be retried
-              }
-              console.log("Task already deleted from Todoist (404), marking inactive");
-            }
-
-            // Update database to mark task as inactive
-            const { data, error } = await db
-              .from("task")
-              .update({ active: false })
-              .match({ linear_task_id: info.id });
-
-            if (error) {
-              console.error("error updating task in database", error);
-              throw error;
-            }
-
-            await addCommentToIssue(
-              info.id,
-              "Issue moved to backlog. Task deleted from Todoist."
+            return await removeTaskFromTodoist(
+              task,
+              info,
+              db,
+              "Issue moved to backlog. Task deleted from Todoist.",
+              "Task deleted from Todoist"
             );
-
-            return {
-              task: data[0],
-              success: true,
-              message: "Task deleted from Todoist",
-            };
           }
         } else if (activeStates.includes(info.state.type)) {
           // If task is now in active state
@@ -175,16 +242,10 @@ export async function processLinearTask(issue: Request, db: any) {
 
             return data[0];
           } else {
-            // Task exists and is active - move it if team changed, then update fields
-            if (info.previousTeamId) {
-              const { data: destTeam } = await db
-                .from("team")
-                .select()
-                .eq("linear_team_id", info.teamId)
-                .maybeSingle();
-              if (destTeam?.todoist_project_id) {
-                await moveTask(task.todoist_task_id, destTeam.todoist_project_id);
-              }
+            // Task exists and is active - move it to the new team's project if
+            // the team changed between tracked teams, then update fields
+            if (info.previousTeamId && team?.todoist_project_id) {
+              await moveTask(task.todoist_task_id, team.todoist_project_id);
             }
             const updated = await updateTask(task.todoist_task_id, {
               content: info.title,
